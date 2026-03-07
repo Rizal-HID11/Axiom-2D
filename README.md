@@ -37,7 +37,7 @@ cd Axiom2D
 python axiom.py
 ```
 
-##Hello World in AXM
+## Hello World in AXM
 Create a file `hello.axm`:
 
 ```axm
@@ -65,7 +65,7 @@ python axiom.py
 
 ---
 
-##Documentation
+## Documentation
 For detailed documentation, see the `Documentations` folder:
 
 ```text
@@ -90,7 +90,7 @@ Documentations/
 
 ---
 
-##Configuration
+## Configuration
 Edit `GAME_CONFIG.json`:
 
 ```json
