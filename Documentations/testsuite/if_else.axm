@@ -1,0 +1,12 @@
+VAR score = 75
+SAYF "Score: {score}"
+
+IF score >= 90
+  SAY "Grade: A"
+ELIF score >= 80
+  SAY "Grade: B"
+ELIF score >= 70
+  SAY "Grade: C"
+ELSE
+  SAY "Grade: D"
+  SAY "Need improvement"

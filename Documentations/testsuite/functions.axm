@@ -1,0 +1,8 @@
+FUN add(a, b)
+  VAR result = a + b
+  RETURN result
+
+VAR x = 5
+VAR y = 3
+VAR total = add(x, y)
+SAYF "{x} + {y} = {total}" // the output is expected 8

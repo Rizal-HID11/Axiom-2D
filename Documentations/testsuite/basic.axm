@@ -1,0 +1,14 @@
+VAR name = "Player"
+VAR health = 100
+
+SAY "Player stats:"
+SAYF "Name: {name}"
+SAYF "Health: {health}"
+
+IF health > 50
+  SAY "Status: Healthy"
+ELSE
+  SAY "Status: Wounded"
+
+FOR i IN 3
+  SAYF "Loop iteration: {i}"

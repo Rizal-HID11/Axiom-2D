@@ -1,0 +1,11 @@
+VAR items = ["sword", "potion", "key"]
+SAYF "You have {LEN(items)} items"
+
+APPEND(items, "shield")
+SORT(items)
+
+VAR first = items[0]
+SAYF "First item: {first}"
+
+IF CONTAINS(items, "potion")
+  SAY "You have a potion!"

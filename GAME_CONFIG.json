@@ -1,0 +1,21 @@
+{
+  "WORLD_NAME": "TestWorld",
+  "WORLD_TICK": 0.01,
+  "AXM_FILE_TO_RUN": "testsuite.axm",
+  "DEBUG": false,
+
+  "WORLD_ENTITY": {
+    "player": {
+      "ROLE": "ENTITY",
+      "HEALTH": 100,
+      "X": 0,
+      "Y": 0
+    },
+    "enemy": {
+      "ROLE": "ENTITY",
+      "HEALTH": 100,
+      "X": 5,
+      "Y": 0
+    }
+  }
+}

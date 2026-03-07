@@ -1,0 +1,10 @@
+SAY "Entity Information:"
+SAYF "Player position: ({@player.x}, {@player.y})"
+SAYF "Player health: {@player.health}"
+
+@player MOVE 5 "RIGHT"
+@enemy DAMAGE 25
+
+SAY "After actions:"
+SAYF "New player position: ({@player.x}, {@player.y})"
+SAYF "Enemy health: {@enemy.health}"

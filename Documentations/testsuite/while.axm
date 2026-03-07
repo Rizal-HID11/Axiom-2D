@@ -1,0 +1,25 @@
+VAR counter = 0
+
+WHILE counter < 5 DO
+  SLEEP 1 S 
+  SAYF "Counter: {counter}"
+  counter = counter + 1
+  IF counter == 3
+    SAY "Halfway there!"
+	
+// Others version:
+// VAR i = 0
+// VAR limit = 10
+
+// WHILE TRUE DO
+//  SLEEP 1 S 
+//  i = i + 1
+
+//  SAYF "Counter: {i}"
+  
+//  IF i == MID(limit) // Math operations
+//    SAY "Halfway there!"
+
+//  IF i == limit
+//    SAY "Done!"
+//    BREAK
