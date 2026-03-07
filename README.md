@@ -1,9 +1,6 @@
 
 # Axiom-2D
-A simple 2D game engine with a DSL programming language from scratch named AXM.
-=======
-
-# Axiom 2D - Tick-Based Game Engine
+# Tick-Based Game Engine
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
