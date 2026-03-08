@@ -68,6 +68,10 @@ For detailed documentation, see the `Documentations` folder:
 ```text
 Documentations/
 ├── ARCHITECTURE.md
+├── Usage Guide/
+│   ├── started.md
+│   └── Guide/
+│       └── axm_syntax.md
 ├── engine/
 │   ├── World.md
 │   └── Entity.md
@@ -78,7 +82,7 @@ Documentations/
 │   ├── Runtime.md
 │   ├── Builtins.md
 │   └── Signals.md
-└── examples/
+└── testsuite/
     ├── basic.axm
     ├── entities.axm
     ├── lists.axm
