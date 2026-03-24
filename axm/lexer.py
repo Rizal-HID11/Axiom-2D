@@ -192,7 +192,7 @@ def lex(code: str):
                         break 
                     if ch2 == '.':
                         break 
-                    if ch2 in '()[]{},':
+                    if ch2 in '()[]{},+-*/<>=!':
                         break 
                     pos += 1
                 
