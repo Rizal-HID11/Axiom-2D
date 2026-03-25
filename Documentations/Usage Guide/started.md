@@ -42,12 +42,13 @@ IF @enemy.health < 100
   SAY "Enemy attacked!"
 ```
 
-Update config and run. Output:
+run it. Output:
 ```text
-[AXIOM] Hello World!
-[AXIOM] Welcome to Axiom 2D
+[AXIOM] Player health: @player.health
+[AXIOM] Enemy health: @enemy.health
+[AXIOM] Enemy attacked!
 ```
-
+**The output would be not 100% similar if you turn on the DEBUG mode.**
 ---
 
 ## Debug Mode
