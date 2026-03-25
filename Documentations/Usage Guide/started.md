@@ -34,8 +34,12 @@ The program will automatically read `GAME_CONFIG.json` and execute the configure
 ## Your First AXM File
 Create `hello.axm`:
 ```axm
-SAY "Hello World!"
-SAY "Welcome to Axiom 2D!"
+// THIS MAY NOT WORK IF YOU MODIFY THE GAME_CONFIG.json file!
+SAYF "Player health: @player.health"
+SAYF "Enemy health: @enemy.health"
+@enemy DAMAGE 10
+IF @enemy.health < 100
+  SAY "Enemy attacked!"
 ```
 
 Update config and run. Output:
