@@ -427,28 +427,43 @@ class Parser:
     
     def parse_function_def(self):
         self.eat("FUN")
-        if self.cur().type != "IDENT":
-            raise ParserError("Expected function name")
-        name = self.cur().value 
+        name = self.cur().value
         self.eat("IDENT")
-        
-        params = [] 
-        if self.cur().type == "LPAREN":
-            self.eat("LPAREN")
-            if self.cur().type != "RPAREN":
-                params.append(self.cur().value)
+        self.eat("LPAREN")
+    
+        params = []
+        defaults = {}
+    
+        if self.cur().type != "RPAREN":
+            while self.cur().type != "RPAREN":
+                param_name = self.cur().value
                 self.eat("IDENT")
-                while self.cur().type == "COMMA":
+                params.append(param_name)
+            
+                # Check if ada default value (param = value)
+                if self.cur().type == "ASSIGN":
+                    self.eat("ASSIGN")
+                    default_value = self.parse_expression()
+                    defaults[param_name] = default_value
+            
+                # Check untuk comma ke parameter berikutnya
+                if self.cur().type == "COMMA":
                     self.eat("COMMA")
-                    params.append(self.cur().value)
-                    self.eat("IDENT")
-            self.eat("RPAREN")
-        
+                elif self.cur().type != "RPAREN":
+                    raise ParserError(f"Expected ',' or ')' in function params, got {self.cur()}")
+    
+        self.eat("RPAREN")
         self.skip_newlines()
+    
+        # Parse body
         self.eat("INDENT")
-        
-        body = self.parse_block()
-        return FunctionDef(name, params, body)
+        body = []
+        while self.cur().type != "DEDENT":
+            body.append(self.statement())
+        self.eat("DEDENT")
+        self.skip_newlines()
+    
+        return FunctionDef(name, params, defaults, body)
 
     def parse_say(self):
         self.eat("SAY")

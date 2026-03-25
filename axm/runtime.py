@@ -11,6 +11,7 @@ class Runtime:
     def __init__(self, world):
         self.world = world
         self.globals = {}
+        self.scopes = [{}]
         self.functions = {}
         
         self.running = True
@@ -44,6 +45,12 @@ class Runtime:
             return value != ""
         return True 
     
+    def lookup(self, name):
+        for scope in reversed(self.scopes):
+            if name in scope:
+                return scope[name]
+        raise AXMRuntimeError(f"Unknown variable or function '{name}'")
+    
     def push_scope(self, initial=None):
         self.scope_stack.append(initial or {})
     
@@ -68,16 +75,7 @@ class Runtime:
         elif isinstance(expr, Boolean):
             return expr.value 
         elif isinstance(expr, Variable):
-            name = expr.name 
-        
-            scope = self.current_scope()
-            if scope and name in scope:
-                return scope[name]
-            
-            if name in self.globals:
-                return self.globals[name]
-             
-            raise AXMRuntimeError(f"Unknown variable or entity '{name}'")
+            return self.lookup(expr.name)
         
         elif isinstance(expr, EntityRef):
             return self.get_entity(expr.name)
@@ -377,14 +375,42 @@ class Runtime:
             
         # FunctionDef
         elif isinstance(node, FunctionDef):
-            self.functions[node.name] = node 
+            # Save func def
+            self.scopes[-1][node.name] = node 
         
         elif isinstance(node, FunctionCall):
-            result = self.eval(node)
-            if isinstance(result, Signal):
-                return result 
+            funcdef = self.lookup(node.name)
+            if not isinstance(funcdef, FunctionDef):
+                raise AXMRuntimeError(f"'{node.name}' is not a function")
+            
+            # Evaluate args
+            args = [self.eval(arg) for arg in node.args]
+            
+            # Create new scope for func 
+            self.scopes.append({})
+            
+            # Bind params with args
+            for i, param in enumerate(funcdef.params):
+                if i<len(args):
+                    self.scopes[-1][param] = args[i]
+                elif param in funcdef.defaults:
+                    # use default value 
+                    defaultval = self.eval(funcdef.defaults[param])
+                    self.scopes[-1][param] = defaultval
+                else:
+                    raise AXMRuntimeError(f"Missing required parameter '{param}' for function '{node.name}'")
+            
+            # Exec func body 
+            try:
+                for stmt in funcdef.body:
+                    self.execute_node(stmt)
+            except ReturnSignal as sig:
+                self.scopes.pop()
+                return sig.value 
+                
+            self.scopes.pop()
             return None 
-        
+            
         elif isinstance(node, Return):
             value = self.eval(node.value) if node.value else None 
             return ReturnSignal(value)

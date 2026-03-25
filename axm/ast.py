@@ -102,13 +102,18 @@ class IndexAccess(Node):
         return f"Index({self.target}[{self.index}])"
 
 class FunctionDef(Node):
-    def __init__(self, name, params, body):
+    def __init__(self, name, params, defaults, body):
         self.name = name 
-        self.params = params 
+        self.params = params # List format: ['p1','p2']
+        self.defaults = defaults # Dict {'name': String('User'), ...}
         self.body = body 
     def __repr__(self):
-        return f"FunctionDef({self.name}({', '.join(self.params)}))"
-
+        params_str = ', '.join([
+            f"{p}={self.defaults[p]}" if p in self.defaults else p 
+            for p in self.params 
+        ])
+        return f"FunctionDef({self.name}({params_str}))"
+     
 class FunctionCall(Node):
     def __init__(self, name, args):
         self.name = name 
