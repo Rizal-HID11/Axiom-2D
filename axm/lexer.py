@@ -5,7 +5,8 @@ KEYWORDS = {
     "MOVE", "SLEEP", "DAMAGE", "IN", "BREAK", 
     "VAR", "TRUE", "FALSE", "FUN", "RETURN", 
     "NOT", "AND", "OR", "WHILE", "DO", "ELIF",
-    "HEAL"
+    "HEAL",
+    "STR", "INT", "LIST", "BOOL", "NUM" 
 }
 DIRECTIONS = {
     "W", "A", "S", "D",
@@ -51,6 +52,14 @@ def lex(code: str):
         if not raw.strip():
             tokens.append(Token("NEWLINE", line=line_no))
             continue
+        
+        # === BAN TAB == 
+        if '\t' in raw:
+            raise LexerError(
+                f"TAB character detected at line {line_no}.\n"
+                f"AXM uses spaces only for indentation (multiples of 2).\n"
+                f"Please convert tabs to spaces or configure your editor to use spaces."
+            )
 
         # --- strip comment ---
         raw = strip_comment(raw)

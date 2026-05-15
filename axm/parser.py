@@ -430,43 +430,58 @@ class Parser:
         name = self.cur().value
         self.eat("IDENT")
         self.eat("LPAREN")
-    
+        
         params = []
-        defaults = {}
-    
+        
+        # Parse parameters 
         if self.cur().type != "RPAREN":
             while self.cur().type != "RPAREN":
-                param_name = self.cur().value
+                param_name = self.cur().value 
                 self.eat("IDENT")
-                params.append(param_name)
-            
-                # Check if ada default value (param = value)
+                
+                param_type = None 
+                default_value = None 
+                
+                # Parse type annotation (param: TYPE)
+                if self.cur().type == "DOT":
+                    self.eat("DOT")
+                    if self.cur().type in ("STR", "INT", "LIST", "BOOL", "NUM"):
+                        param_type = self.cur().type
+                        self.eat(param_type)
+                    else:
+                        raise ParserError(f"Expected type, got {self.cur()}")
+                
+                # Parse default value (= value)
                 if self.cur().type == "ASSIGN":
                     self.eat("ASSIGN")
                     default_value = self.parse_expression()
-                    defaults[param_name] = default_value
-            
-                # Check untuk comma ke parameter berikutnya
+                
+                # Create Parameter object 
+                from axm.ast import Parameter
+                params.append(Parameter(param_name, param_type, default_value))
+                
+                # Check for comma 
                 if self.cur().type == "COMMA":
                     self.eat("COMMA")
                 elif self.cur().type != "RPAREN":
-                    raise ParserError(f"Expected ',' or ')' in function params, got {self.cur()}")
-    
-        self.eat("RPAREN")
-        self.skip_newlines()
-    
-        # Parse body
-        self.eat("INDENT")
-        body = []
-        while self.cur().type != "DEDENT":
-            body.append(self.statement())
-        self.eat("DEDENT")
-        self.skip_newlines()
-    
-        return FunctionDef(name, params, defaults, body)
-
+                    raise ParserError(f"Expected ',' or ')' in function parameters, got {self.cur()}")
+                
+            self.eat("RPAREN")
+            self.skip_newlines()
+            
+            # parse body 
+            self.eat("INDENT")
+            body = []
+            while self.cur().type != "DEDENT":
+                body.append(self.statement())
+            self.eat("DEDENT")
+            self.skip_newlines()
+            
+            return FunctionDef(name, params, body)
+                
     def parse_say(self):
         self.eat("SAY")
+        print(f"DEBUG SAY: cur token = {self.cur()}")
         if self.cur().type == "STRING":
             # String literal 
             text = self.cur().value 
@@ -476,6 +491,7 @@ class Parser:
         else:
             # Expression (variable, attribute, dll)
             expr = self.parse_expression()
+            print(f"DEBUG SAY: expr = {expr}")
             self.skip_newlines()
             return Say(expr)
 
