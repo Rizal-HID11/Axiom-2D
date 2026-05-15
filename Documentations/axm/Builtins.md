@@ -25,6 +25,11 @@
 
 - `SPLIT(string, delimiter)` - Split string into list
 
+## TYPE CONVERSION
+
+- `CINT(value)` - Converts strings or numbers to integers. 
+- `CSTR(value)` - Converts any value to a string.
+
 ## Math Operations
 
 * **Rounding & Absolute**
@@ -76,5 +81,9 @@
 
 - `SAY(text)` - Print with `[AXIOM]` prefix
 - `SAYF(text)` - Print (used by SAYF statement)
+
+## OTHERS...
+
+- `TIME()` - a simple timer (using milisecond)
 
 ---
