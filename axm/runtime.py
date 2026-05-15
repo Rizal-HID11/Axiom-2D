@@ -11,7 +11,6 @@ class Runtime:
     def __init__(self, world):
         self.world = world
         self.globals = {}
-        self.scopes = [{}]
         self.functions = {}
         
         self.running = True
@@ -46,16 +45,112 @@ class Runtime:
         return True 
     
     def lookup(self, name):
-        for scope in reversed(self.scopes):
+        for scope in reversed(self.scope_stack):
             if name in scope:
                 return scope[name]
-        raise AXMRuntimeError(f"Unknown variable or function '{name}'")
+        
+        if name in self.globals:
+            return self.globals[name] 
+        
+        # suggestion 
+        all_names = self._get_all_variable_name()
+        suggestion = self._closest_match(name, all_names)
+        
+        if suggestion:
+            raise AXMRuntimeError(
+                f"Unknown variable or function '{name}'. Did you mean '{suggestion}'?"
+            )
+        else:
+            raise AXMRuntimeError(f"Unknown variable or function '{name}'")
+        
+    def _closest_match(self, name, candidates, maxDist=3):
+        if not candidates:
+            return None 
+        
+        # Simple cases: exact match (shouldn't happen but safety)
+        if name in candidates:
+            return name 
+        
+        best_match = None 
+        best_distance = maxDist + 1 
+        
+        for candidate in candidates:
+            distance = self._levenshtein(name, candidate)
+            if distance < best_distance:
+                best_distance = distance 
+                best_match = candidate 
+        
+        return best_match if best_distance <= maxDist else None 
+        
+    def _levenshtein(self, s1, s2):
+        if len(s1) < len(s2):
+            return self._levenshtein(s2, s1)
+        
+        if len(s2) == 0:
+            return len(s1)
+        
+        previous_row = range(len(s2) + 1)
+        for i, c1 in enumerate(s1):
+            current_row = [i + 1]
+            for j, c2 in enumerate(s2):
+                # Insert, delete, substitute 
+                insertions = previous_row[j + 1] + 1 
+                deletions = current_row[j] + 1 
+                substitutions = previous_row[j] + (c1 != c2)
+                current_row.append(min(insertions, deletions, substitutions))
+            previous_row = current_row
+        
+        return previous_row[-1]
+    
+    def _get_all_variable_name(self):
+        names = set()
+        
+        # from scope_stack
+        for scope in self.scope_stack:
+            names.update(scope.keys())
+        
+        # From globals 
+        names.update(self.globals.keys())
+        
+        # From functions 
+        names.update(self.functions.keys())
+        
+        # From builtins 
+        for name in dir(self.builtins):
+            if not name.startswith('_') and callable(getattr(self.builtins, name)):
+                names.add(name)
+        
+        return names 
+    
+    def get_type_name(self, val):
+        if isinstance(val, str):
+            return "STR"
+        elif isinstance(val, bool):
+            return "BOOL"
+        elif isinstance(val, int):
+            return "INT"
+        elif isinstance(val, float):
+            return "NUM"
+        elif isinstance(val, list):
+            return "LIST"
+        return "UNKNOWN"
+    
+    def is_type_match(self, expected, actual):
+        if expected == actual:
+            return True 
+        if expected == "NUM" and actual in ("INT", "NUM"):
+            return True 
+        if expected == "INT" and actual == "INT":
+            return True
+        return False 
     
     def push_scope(self, initial=None):
         self.scope_stack.append(initial or {})
     
     def pop_scope(self):
-        self.scope_stack.pop()
+        if self.scope_stack:
+            return self.scope_stack.pop()
+        return None
     
     def current_scope(self):
         return self.scope_stack[-1] if self.scope_stack else None
@@ -151,38 +246,61 @@ class Runtime:
                 raise AXMRuntimeError(f"Unknown logical operator: {expr.op}")
              
         elif isinstance(expr, FunctionCall):
+            # Check user func 
             func = self.functions.get(expr.name)
             
-            # if None, Check in builtins
+            # If not user func, check builtins 
             if not func:
                 builtinf = getattr(self.builtins, expr.name, None)
                 if builtinf and callable(builtinf):
                     arg_vals = [self.eval(arg) for arg in expr.args]
                     return builtinf(*arg_vals)
-             
-            # If still None, error 
-            if not func:
-                raise AXMRuntimeError(f"Function '{expr.name}' not defined")
-             
-            # this is for user func 
+                
+                # Suggestion for function 
+                all_names = self._get_all_variable_name()
+                suggestion = self._closest_match(expr.name, all_names)
+                if suggestion:
+                    raise AXMRuntimeError(
+                        f"Function '{expr.name}' not defined. Did you mean '{suggestion}'?"
+                    )
+                else:
+                    raise AXMRuntimeError(f"Function '{expr.name}' not defined")
+            
+            # User function 
             arg_vals = [self.eval(arg) for arg in expr.args]
-             
+            
             if len(arg_vals) != len(func.params):
                 raise AXMRuntimeError(
-                   f"Function '{expr.name}' expected {len(func.params)} args, got {len(arg_vals)}"
+                    f"Function '{expr.name}' expected {len(func.params)} args, got {len(arg_vals)}"
                 )
-             
-            old_dpth = len(self.scope_stack)
-            self.push_scope(dict(zip(func.params, arg_vals)))
-             
-            try:
+            
+            # Save depth for cleanup 
+            old_depth = len(self.scope_stack)
+            self.push_scope({})
+            func_scope = self.current_scope()
+            
+            # Bind params 
+            for i, param in enumerate(func.params):
+                if param.param_type:
+                    expected_type = param.param_type
+                    actual_type = self.get_type_name(arg_vals[i])
+                    if not self.is_type_match(expected_type, actual_type):
+                        while len(self.scope_stack) > old_depth:
+                            self.pop_scope()
+                        raise AXMRuntimeError(
+                            f"Parameter '{param.name}' expects {expected_type}, got {actual_type}"
+                        )
+                func_scope[param.name] = arg_vals[i]
+           
+            try:                
                 result = self.execute_block(func.body)
                 if isinstance(result, ReturnSignal):
                     return result.value 
                 return None 
             finally:
-                while len(self.scope_stack) > old_dpth:
+                while len(self.scope_stack) > old_depth:
                     self.pop_scope()
+            
             
         elif isinstance(expr, ListLiteral):
             return [self.eval(e) for e in expr.elements]
@@ -190,16 +308,25 @@ class Runtime:
             target = self.eval(expr.target)
             index = self.eval(expr.index)
             
-            if not isinstance(target, list):
-                raise AXMRuntimeError("Indexing non-list value")
-            
             if not isinstance(index, int):
-                raise AXMRuntimeError("List index must be integer")
+                raise AXMRuntimeError(f"Index must be integer, got {type(index).__name__}")
             
-            try:
-                return target[index]    
-            except IndexError:
-                raise AXMRuntimeError("List index out of range")
+            # Support string indexing 
+            if isinstance(target, str):
+                try:
+                    return target[index] 
+                except IndexError:
+                    raise AXMRuntimeError(f"String index {index} out of range (length {len(target)})")
+           
+            # Support list indexing 
+            if isinstance(target, list):
+                try:
+                    return target[index]
+                except IndexError:
+                    raise AXMRuntimeError(f"List index {index} out of range (length {len(target)})")
+            
+            raise AXMRuntimeError(f"Cannot index type: {type(target).__name__}")
+            
         else:
             raise AXMRuntimeError(f"Cannot evaluate expression: {expr}")
         
@@ -304,8 +431,8 @@ class Runtime:
             times = self.eval(node.times)
             if not isinstance(times, int):
                 raise AXMRuntimeError("FOR loop times must be integer")
-
-            self.push_scope()
+ 
+            self.push_scope({})
             
             try:
                 for i in range(times):
@@ -331,86 +458,118 @@ class Runtime:
             
             # Index Assignment 
             if isinstance(node.name, IndexAccess):
-                # Evaluate target list and index
                 target = self.eval(node.name.target)
                 index = self.eval(node.name.index)
                 
-                # Validate
                 if not isinstance(target, list):
                     raise AXMRuntimeError(f"Cannot assign to index of non-list: {type(target).__name__}")
                 if not isinstance(index, int):
                     raise AXMRuntimeError(f"List index must be integer, got {type(index).__name__}")
                 
-                # Assign to list 
                 try:
                     target[index] = value 
                 except IndexError:
                     raise AXMRuntimeError(f"List index {index} out of range (length {len(target)})")
                 
-                return value          
-                
-            # Regular var assignment 
+                return value 
+           
+            # Regular assignment 
             elif isinstance(node.name, str):
-                scope = self.current_scope()
-                var_name = node.name 
-                
+                var_name = node.name
+               
                 found = False 
                 for scope in reversed(self.scope_stack):
                     if var_name in scope:
                         scope[var_name] = value 
                         found = True 
-                        break
-                
+                        break 
+               
                 if not found:
                     if var_name in self.globals:
                         self.globals[var_name] = value 
                     else:
-                        raise AXMRuntimeError(f"Undefined variable '{node.name}'")
-                
-                return value
-            
+                        raise AXMRuntimeError(f"Undefined variable '{var_name}'")
+               
+                return value 
+           
             else:
                 raise AXMRuntimeError(f"Invalid assignment target: {type(node.name).__name__}")
-                 
-            
+           
         # FunctionDef
         elif isinstance(node, FunctionDef):
             # Save func def
-            self.scopes[-1][node.name] = node 
+            self.functions[node.name] = node 
         
+        # FunctionCall
         elif isinstance(node, FunctionCall):
-            funcdef = self.lookup(node.name)
+            # get func def
+            funcdef = self.functions.get(node.name)
+            if not funcdef:
+                # Try builtins 
+                builtinf = getattr(self.builtins, node.name, None)
+                if builtinf and callable(builtinf):
+                    arg_vals = [self.eval(arg) for arg in node.args]
+                    return builtinf(*arg_vals)
+                
+                # Suggestion for function 
+                all_names = self._get_all_variable_name()
+                suggestion = self._closest_match(node.name, all_names)
+                if suggestion:
+                    raise AXMRuntimeError(
+                        f"Function '{node.name}' not defined. Did you mean '{suggestion}'?"
+                    )
+                else:
+                    raise AXMRuntimeError(f"Function '{node.name}' not defined")
+            
             if not isinstance(funcdef, FunctionDef):
                 raise AXMRuntimeError(f"'{node.name}' is not a function")
             
-            # Evaluate args
+            # Evaluate args 
             args = [self.eval(arg) for arg in node.args]
             
-            # Create new scope for func 
-            self.scopes.append({})
+            # create new scope for function 
+            self.push_scope({})
+            # Get the scope we just pushed 
+            func_scope = self.current_scope()
             
-            # Bind params with args
+            # Bind params with args 
             for i, param in enumerate(funcdef.params):
-                if i<len(args):
-                    self.scopes[-1][param] = args[i]
-                elif param in funcdef.defaults:
-                    # use default value 
-                    defaultval = self.eval(funcdef.defaults[param])
-                    self.scopes[-1][param] = defaultval
+                if i < len(args):
+                    arg_value = args[i]
+                    
+                    # Type checking 
+                    if param.param_type:
+                        expected_type = param.param_type
+                        actual_type = self.get_type_name(arg_value)
+                        if not self.is_type_match(expected_type, actual_type):
+                            self.pop_scope()
+                            raise AXMRuntimeError(
+                                f"Parameter '{param.name}' expects {expected_type}, got {actual_type}"
+                            )
+                    
+                    func_scope[param.name] = arg_value
+                
+                elif param.default:
+                    # Use default value 
+                    defaultval = self.eval(param.default)
+                    func_scope[param.name] = defaultval
                 else:
-                    raise AXMRuntimeError(f"Missing required parameter '{param}' for function '{node.name}'")
+                    self.pop_scope()
+                    raise AXMRuntimeError(
+                        f"Missing required parameter '{param.name}' for function '{node.name}'"
+                    )
             
-            # Exec func body 
+            # Execute function body 
             try:
                 for stmt in funcdef.body:
-                    self.execute_node(stmt)
-            except ReturnSignal as sig:
-                self.scopes.pop()
-                return sig.value 
-                
-            self.scopes.pop()
-            return None 
+                    result = self.execute_node(stmt)
+                    if isinstance(result, ReturnSignal):
+                        return result.value 
+            finally:
+                self.pop_scope()
             
+            return None 
+                    
         elif isinstance(node, Return):
             value = self.eval(node.value) if node.value else None 
             return ReturnSignal(value)
