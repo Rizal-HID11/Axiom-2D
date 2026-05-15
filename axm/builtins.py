@@ -199,6 +199,19 @@ class Builtins:
     def IS_BOOL(self, dt):
         return isinstance(dt, bool)
     
+    # STRING TO INT CONVERSION 
+    def CINT(self, value):
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                raise RuntimeError(f"INT: Cannot convert '{value}' to integer")
+        if isinstance(value, (int, float)):
+            return int(value)
+        raise RuntimeError(f"INT: Expected string or number, got {type(value).__name__}")
+    def CSTR(self, value):
+        return str(value)
+    
     # MATH OPERATIONS
     def FLOOR(self, n):
         return math.floor(n)
@@ -233,10 +246,17 @@ class Builtins:
         
         return a % b
     
+    def TIME(self):
+        return time.time() * 1000
+    
     def RAND(self, minv=0, maxv=100):
         return random.randint(minv, maxv)
+    def RANDOM(self, minv=0, maxv=100):
+        return self.RAND(minv, maxv)
     def RAND_FLOAT(self, minv=0.0, maxv=1.0):
         return random.uniform(minv, maxv)
+    def RANDOM_FLOAT(self, minv=0.0, maxv=1.0):
+        return RAND_FLOAT(minv, maxv)
     
     def SIN(self, n):
         return math.sin(n)
