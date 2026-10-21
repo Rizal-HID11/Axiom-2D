@@ -16,7 +16,7 @@ class Entity:
         self.vy = 0 
         self.vz = 0
         
-        # single source 
+        self._last_move = None
         self._position = [x, y, z]
     
     @property 
@@ -55,14 +55,17 @@ class Entity:
             return 
         
         if self.vx or self.vy or self.vz:
-            print(f"[TICK] {self.name} moving with v=({self.vx},{self.vy}) from ({self.x},{self.y})")
+            if getattr(world, 'debug', False):
+                print(f"[TICK] {self.name} moving with v=({self.vx},{self.vy},{self.vz}) from ({self.x},{self.y},{self.z})")
             success, blocker = world.try_move(self, self.vx, self.vy, self.vz)
+            
             if success:
-                print(f"[TICK] {self.name} moved to ({self.x},{self.y})")
-                # reset velocity
-                self.vx = self.vy = self.vz = 0 
-            else:
-                print(f"[TICK] {self.name} collision!")
+                if getattr(world, 'debug', False):
+                    print(f"[TICK] {self.name} moved to ({self.x},{self.y},{self.z})")
+                else:
+                    if getattr(world, 'debug', False):
+                        print(f"[TICK] {self.name} collision with {blocker.name if blocker else '?'}")
+                # reset velocity 
                 self.vx = self.vy = self.vz = 0
     
     # actions

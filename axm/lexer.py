@@ -9,11 +9,20 @@ KEYWORDS = {
     "STR", "INT", "LIST", "BOOL", "NUM" 
 }
 DIRECTIONS = {
+    # WASD
     "W", "A", "S", "D",
+    # Cardinal
     "UP", "DOWN", "LEFT", "RIGHT",
-    "TOP", "BOTTOM"
+    # Z-axis
+    "TOP", "BOTTOM",
+    # Compass
+    "NORTH", "SOUTH", "EAST", "WEST",
+    # Z-axis alias
+    "UP_Z", "DOWN_Z",
+    # Arrow
+    "ARROW_UP", "ARROW_DOWN", "ARROW_LEFT", "ARROW_RIGHT"
 }
-TIME_UNITS = {"MS", "S", "M"}
+TIME_UNITS = {"MS", "SEC", "MINUTE"}
 
 class Token:
     def __init__(self, type_, value=None, line=0):
@@ -182,7 +191,7 @@ def lex(code: str):
                         dotseen = True 
                         pos += 1
                         continue
-                    if ch2 in '()[]{},':
+                    if ch2 in '()[]{},+-*/<>=!':
                         break 
                     pos += 1
                

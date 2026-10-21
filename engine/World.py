@@ -7,6 +7,7 @@ class World:
         self.world_name = name
         self.entities = {}
         self.entity_names = {}
+        self.bounds = None 
     
     def add_entity(self, name, role, health, x, y, z=0):
         if name in self.entity_names:
@@ -53,6 +54,23 @@ class World:
         x1, y1, z1 = e1.position 
         x2, y2, z2 = e2.position 
         return abs(x1 - x2) + abs(y1 - y2) == 1 and z1 == z2 
+        
+    def _in_bounds(self, pos):
+        if self.bounds is None:
+            return True 
+        
+        x, y, z = pos 
+        
+        min_x = self.bounds.get("min_x", float("-inf")) 
+        max_x = self.bounds.get("max_x", float("inf"))
+        min_y = self.bounds.get("min_y", float("-inf"))
+        max_y = self.bounds.get("max_y", float("inf"))
+        min_z = self.bounds.get("min_z", float("-inf"))
+        max_z = self.bounds.get("max_z", float("inf"))
+        
+        return (min_x <= x <= max_x and 
+                min_y <= y <= max_y and 
+                min_z <= z <= max_z)
     
     def try_move(self, entity, dx, dy, dz=0):
         ex, ey, ez = entity.position
@@ -73,6 +91,12 @@ class World:
             next_y = ey+step_y
             next_z = ez+step_z
             target = (next_x, next_y, next_z)
+            
+            # Check bounds 
+            if self.bounds is not None and not self._in_bounds(target):
+                blocked = True 
+                blocker = None # blocked by bounds, not entity 
+                break 
             
             # Check collision 
             blocked = False 

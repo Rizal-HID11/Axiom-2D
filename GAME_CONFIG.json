@@ -3,18 +3,17 @@
   "WORLD_TICK": 0.01,
   "AXM_FILE_TO_RUN": "testsuite.axm",
   "DEBUG": false,
-
+  "WORLD_BOUNDS": {
+    "min_x": 0,
+    "max_x": 10,
+    "min_y": 0,
+    "max_y": 10
+  },
   "WORLD_ENTITY": {
     "player": {
       "ROLE": "ENTITY",
       "HEALTH": 100,
       "X": 0,
-      "Y": 0
-    },
-    "enemy": {
-      "ROLE": "ENTITY",
-      "HEALTH": 100,
-      "X": 5,
       "Y": 0
     }
   }

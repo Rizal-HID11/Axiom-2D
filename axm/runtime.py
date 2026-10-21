@@ -19,6 +19,8 @@ class Runtime:
         
         self.scope_stack = []
         
+        self.sleep_until = 0.0
+        
         self.builtins = Builtins(self)
 
     # Basic tools
@@ -182,8 +184,9 @@ class Runtime:
             
             from engine.Entity import Entity 
             if not isinstance(obj, Entity):
+                obj_name = getattr(expr.obj, 'name', '?')
                 raise AXMRuntimeError(
-                    f"'{expr.obj.name}' is not an entity. Use @{expr.obj.name}"
+                    f"'{obj_name}' is not an entity. Use @{obj_name}"
                 )
             
             if not hasattr(obj, attr_name):
@@ -246,60 +249,7 @@ class Runtime:
                 raise AXMRuntimeError(f"Unknown logical operator: {expr.op}")
              
         elif isinstance(expr, FunctionCall):
-            # Check user func 
-            func = self.functions.get(expr.name)
-            
-            # If not user func, check builtins 
-            if not func:
-                builtinf = getattr(self.builtins, expr.name, None)
-                if builtinf and callable(builtinf):
-                    arg_vals = [self.eval(arg) for arg in expr.args]
-                    return builtinf(*arg_vals)
-                
-                # Suggestion for function 
-                all_names = self._get_all_variable_name()
-                suggestion = self._closest_match(expr.name, all_names)
-                if suggestion:
-                    raise AXMRuntimeError(
-                        f"Function '{expr.name}' not defined. Did you mean '{suggestion}'?"
-                    )
-                else:
-                    raise AXMRuntimeError(f"Function '{expr.name}' not defined")
-            
-            # User function 
-            arg_vals = [self.eval(arg) for arg in expr.args]
-            
-            if len(arg_vals) != len(func.params):
-                raise AXMRuntimeError(
-                    f"Function '{expr.name}' expected {len(func.params)} args, got {len(arg_vals)}"
-                )
-            
-            # Save depth for cleanup 
-            old_depth = len(self.scope_stack)
-            self.push_scope({})
-            func_scope = self.current_scope()
-            
-            # Bind params 
-            for i, param in enumerate(func.params):
-                if param.param_type:
-                    expected_type = param.param_type
-                    actual_type = self.get_type_name(arg_vals[i])
-                    if not self.is_type_match(expected_type, actual_type):
-                        while len(self.scope_stack) > old_depth:
-                            self.pop_scope()
-                        raise AXMRuntimeError(
-                            f"Parameter '{param.name}' expects {expected_type}, got {actual_type}"
-                        )
-                func_scope[param.name] = arg_vals[i]
-           
-            try:                
-                result = self.execute_block(func.body)
-                if isinstance(result, ReturnSignal):
-                    return result.value 
-                return None 
-            finally:
-                while len(self.scope_stack) > old_depth:
-                    self.pop_scope()
+            return self.execute_node(expr)
             
             
         elif isinstance(expr, ListLiteral):
@@ -352,22 +302,31 @@ class Runtime:
         if not self.running:
             return
 
-        if self.pc >= len(self.program):
-            self.running = False
-            return
-
-        node = self.program[self.pc]
-        result = self.execute_node(node)
-
-        if isinstance(result, ReturnSignal):
-            self.running = False
-            return
-
-        if isinstance(result, BreakSignal):
-            self.pc += 1
-            return
-
-        self.pc += 1       
+        if time.time() < self.sleep_until:
+            return 
+        
+        while self.running and self.pc < len(self.program):
+            node = self.program[self.pc]
+            
+            is_yield = isinstance(node, (Sleep, Move, Damage, Heal))
+            
+            result = self.execute_node(node)
+            
+            if isinstance(result, ReturnSignal):
+                self.running = False 
+                return 
+            
+            if isinstance(result, BreakSignal):
+                self.pc += 1
+                return 
+            
+            self.pc+=1
+            
+            if is_yield:
+                return 
+            
+            if self.pc >= len(self.program):
+                self.running = False 
 
     def execute_node(self, node):
 
@@ -404,21 +363,22 @@ class Runtime:
             
             if unit == "MS":
                 seconds = duration / 1000
-            elif unit == "S":
+            elif unit == "SEC":
                 seconds = duration 
-            elif unit == "M":
+            elif unit == "MINUTE":
                 seconds = duration * 60 
             else:
                 raise AXMRuntimeError(f"Invalid time unit: {unit}")
             
             if seconds > 0:
-                time.sleep(seconds)
-            
+                self.sleep_until = time.time() + seconds 
+                
         # DAMAGE
         elif isinstance(node, Damage):
             entity = self.eval(node.entity)
             amount = self.eval(node.amount)
             self.builtins.DAMAGE(entity, amount)
+            return YieldSignal()
         
         # HEAL 
         elif isinstance(node, Heal):
@@ -450,7 +410,11 @@ class Runtime:
         # VAR DECL
         elif isinstance(node, Var):
             value = self.eval(node.value)
-            self.globals[node.name] = value
+            if self.scope_stack:
+                self.current_scope()[node.name] = value 
+            else:
+                # Top-Level -> global 
+                self.globals[node.name] = value 
         
         # Var Assignment 
         elif isinstance(node, Assignment):
@@ -549,7 +513,7 @@ class Runtime:
                     
                     func_scope[param.name] = arg_value
                 
-                elif param.default:
+                elif param.default is not None:
                     # Use default value 
                     defaultval = self.eval(param.default)
                     func_scope[param.name] = defaultval
@@ -583,33 +547,62 @@ class Runtime:
         elif isinstance(node, If):
             # IF 
             if self.is_truthy(self.eval(node.condition)):
-                result = self.execute_block(node.body)
-                if isinstance(result, Signal):
-                    return result 
-                return None 
+                self.push_scope({})
+                try:
+                    result = self.execute_block(node.body)
+                    if isinstance(result, Signal):
+                        return result 
+                finally:
+                    self.pop_scope()
+                return None
             
             # ELIF(s)
             for elif_cond, elif_body in node.elifs:
                 if self.is_truthy(self.eval(elif_cond)):
-                    result = self.execute_block(elif_body)
-                    if isinstance(result, Signal):
-                        return result 
+                    self.push_scope({})
+                    try:
+                        result = self.execute_block(elif_body)
+                        if isinstance(result, Signal):
+                            return result 
+                    finally:
+                        self.pop_scope()
                     return None 
             
             # ELSE 
             if node.else_body:
-                result = self.execute_block(node.else_body)
-                if isinstance(result, Signal):
-                    return result 
+                self.push_scope({})
+                try:
+                    result = self.execute_block(node.else_body)
+                    if isinstance(result, Signal):
+                        return result
+                finally:
+                    self.pop_scope()
+                
+           
         
         elif isinstance(node, While):
+            MAX_ITERATIONS = getattr(self, 'max_while_iterations', 10000)
+            iteration = 0
+            
             while self.is_truthy(self.eval(node.condition)):
-                result = self.execute_block(node.body)
+                if iteration >= MAX_ITERATIONS:
+                    raise AXMRuntimeError(
+                        f"While loop exceeded {MAX_ITERATIONS} iterations (possible infinite loop). "
+                        f"Check your condition or add BREAK."
+                    )
+                    
+                self.push_scope({})
+                try:
+                    result = self.execute_block(node.body)
+                finally:
+                    self.pop_scope()
 
                 if isinstance(result, BreakSignal):
                     break
 
                 if isinstance(result, ReturnSignal):
                     return result
+                
+                iteration += 1
 
             return None

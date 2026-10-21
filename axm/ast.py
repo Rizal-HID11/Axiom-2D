@@ -109,7 +109,8 @@ class Parameter(Node):
     
     def __repr__(self):
         type_str = f": {self.param_type}" if self.param_type else ""
-        default_str = f" = {self.default}" if self.default else ""
+        default_str = f" = {self.default}" if self.default is not None else ""
+        
         return f"Parameter({self.name}{type_str}{default_str})"
 
 class FunctionDef(Node):

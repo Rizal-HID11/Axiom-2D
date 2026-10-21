@@ -47,7 +47,8 @@ class Builtins:
 
     # SAYF
     def SAYF(self, text):
-        print(f"[AXIOM] {text}")
+        # alias
+        return self.SAY(text)
 
     # =========================
     # ENTITY ACTIONS
@@ -55,11 +56,11 @@ class Builtins:
     def MOVE(self, entity, steps, direction):
         # Validate
         if not isinstance(steps, (int, float)):
-            raise RuntimeError("MOVE steps must be number")
+            raise RuntimeError("MOVE Steps must be number")
         if not isinstance(direction, str):
             raise RuntimeError("MOVE direction must be string")
         if not hasattr(entity, "vx") or not hasattr(entity, "vy"):
-            raise RuntimeError("MOVE target is not Entity")
+            raise RuntimeError("MOVE target is not entity")
         
         dir_key = direction.upper()
         
@@ -71,6 +72,8 @@ class Builtins:
         entity.vx = dx * steps 
         entity.vy = dy * steps 
         entity.vz = dz * steps 
+        
+        entity._last_move = {"direction": dir_key, "steps": steps}
         
         return True
             
@@ -104,7 +107,8 @@ class Builtins:
         # Healing (add health, but not more than max health?)
         # If you want to have max health, you can add the max_health attribute in Entity.
         old_health = entity.health 
-        entity.health = entity.health + amount 
+        entity.health = entity.health + amount
+        return entity.health 
         
         # Optional: if you want to have max health 
         # if hasattr(entity, 'max_health'):
@@ -166,28 +170,11 @@ class Builtins:
         except ValueError:
             return -1
     def SPLIT(self, t, delimeter=None):
+        if not isinstance(t, str):
+            raise RuntimeError(f"SPLIT: Expected string, got {type(t).__name__}")
         if delimeter is None:
-            delimeter = " " # default space 
-        
-        result = [] 
-        curr = ""
-        
-        i = 0
-        while i < len(t):
-            # check if found delimeter 
-            if i + len(delimeter) <= len(t) and t[i:i+len(delimeter)] == delimeter:
-                if curr: # dont add new empty str
-                    result.append(curr)
-                    curr = ""
-                i += len(delimeter)
-            else:
-                curr += t[i]
-                i+=1
-        
-        if curr:
-            result.append(curr)
-        
-        return result 
+            return t.split()
+        return t.split(delimeter)
     
     # IS_[TYPE] OPERATIONS
     def IS_INT(self, dt):
@@ -211,6 +198,17 @@ class Builtins:
         raise RuntimeError(f"INT: Expected string or number, got {type(value).__name__}")
     def CSTR(self, value):
         return str(value)
+    # Alias 
+    def INT(self, value):
+        return self.CINT(value)
+    def STR(self, value):
+        return self.CSTR(value)
+    def BOOL(self, value):
+        return bool(value)
+    def LIST(self, *args):
+        return list(args)
+    def NUM(self, value):
+        return float(value)
     
     # MATH OPERATIONS
     def FLOOR(self, n):
@@ -224,10 +222,14 @@ class Builtins:
     def ABS(self, n):
         return abs(n)
     
-    def MIN(self, a,b):
-        return min(a,b)
-    def MAX(self, a,b):
-        return max(a,b)
+    def MIN(self, *args):
+        if not args:
+            raise RuntimeError("MIN: requires at least 1 argument")
+        return min(args)
+    def MAX(self, *args):
+        if not args:
+            raise RuntimeError("MAX: requires at least 1 argument")
+        return max(args)
     
     def MID(self, n):
         return math.floor(n / 2)
@@ -256,14 +258,14 @@ class Builtins:
     def RAND_FLOAT(self, minv=0.0, maxv=1.0):
         return random.uniform(minv, maxv)
     def RANDOM_FLOAT(self, minv=0.0, maxv=1.0):
-        return RAND_FLOAT(minv, maxv)
+        return self.RAND_FLOAT(minv, maxv)
     
     def SIN(self, n):
         return math.sin(n)
     def COS(self, n):
         return math.cos(n)
     def TAN(self, n):
-        return math.tanh(n)
+        return math.tan(n)
     
     def LOG(self, n, base=10):
         if n<=0:

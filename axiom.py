@@ -23,6 +23,11 @@ def run():
 
     # --- create world ---
     world = World(world_name)
+    world.debug = debug 
+    # Load bounds (Optional)
+    bounds = config.get("WORLD_BOUNDS")
+    if bounds:
+        world.bounds = bounds 
 
     # --- load entities ---
     entities = config.get("WORLD_ENTITY", {})
@@ -36,6 +41,7 @@ def run():
         world.add_entity(name, role, health, x, y, z)
 
     runtime = Runtime(world)
+    runtime.max_while_iterations = config.get("MAX_WHILE_ITERATIONS", 10000)
 
     # --- load AXM code ---
     with open(axm_file, "r", encoding="utf-8") as f:
@@ -61,10 +67,24 @@ def run():
 
     # --- main loop ---
     while runtime.running:
-        world.tick()
+        tick_start = time.time() 
+        
+        world.tick() 
         runtime.tick()
-        time.sleep(world_tick)
+        
+        elapsed = time.time() - tick_start
+        sleep_time = world_tick - elapsed 
+        if sleep_time > 0:
+            time.sleep(sleep_time)
 
 
 if __name__ == "__main__":
-    run()
+    try:
+        run()
+    except KeyboardInterrupt:
+        print("\n[AXIOM] Interrupted by user.")
+    except Exception as e:
+        print(f"\n[AXIOM] Error: {e}")
+        if '--debug' in __import__('sys').argv:
+            import traceback 
+            traceback.print_exc()

@@ -10,7 +10,6 @@ class ParserError(Exception):
 class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
-        self.stop_tokens = {}
         self.pos = 0
 
     # ---------- basic helpers ----------
@@ -72,7 +71,7 @@ class Parser:
         return body 
 
     # ---------- expression parser ----------
-    def parse_expression(self, stop_tokens=None):
+    def parse_expression(self):
         return self.parse_or()
     
     def parse_or(self):
@@ -131,6 +130,18 @@ class Parser:
         token = self.cur()
         from .ast import EntityRef 
         
+        # unary minus / plus 
+        if token.type == 'OP' and token.value in ("-", "+"):
+            op = token.value 
+            self.eat("OP")
+            operand = self.parse_primary_atom()
+            if op == '-':
+                # wrap as 0 - operand, or Number(-val) if literal 
+                if isinstance(operand, Number):
+                    return Number(-operand.value)
+                return BinaryOp(Number(0), "-", operand)
+            return operand
+        
         # @entity 
         if token.type == "AT":
             self.eat("AT")
@@ -152,21 +163,34 @@ class Parser:
             
             return expr 
             
+        if token.type in ("INT", "STR", "LIST", "BOOL", "NUM"):
+            name = token.value 
+            self.eat(token.type)
+            
+            if self.cur().type == "LPAREN":
+                return self.parse_function_call(name)
+                
+            raise ParserError(f"Type keyword '{name}' must be followed by '('")
+            
         if token.type == "IDENT":
             name = token.value 
             self.eat("IDENT")
             
             if self.cur().type == "LPAREN":
                 return self.parse_function_call(name)
+            else:
+                expr = Variable(name)
             
-            # attr access 
-            if self.cur().type == "DOT":
+            # Attribute chain
+            while self.cur().type == "DOT":
                 self.eat("DOT")
+                if self.cur().type != "IDENT":
+                    raise ParserError("Expected attribute name after '.'")
                 attr = self.cur().value 
                 self.eat("IDENT")
-                return Attribute(Variable(name), attr)
+                expr = Attribute(expr, attr)
             
-            return Variable(name)
+            return expr
                 
         elif token.type == "NUMBER":
             val = token.value 
@@ -466,22 +490,26 @@ class Parser:
                 elif self.cur().type != "RPAREN":
                     raise ParserError(f"Expected ',' or ')' in function parameters, got {self.cur()}")
                 
-            self.eat("RPAREN")
-            self.skip_newlines()
+        self.eat("RPAREN")
+        self.skip_newlines()
+        self.eat("INDENT")
             
-            # parse body 
-            self.eat("INDENT")
-            body = []
-            while self.cur().type != "DEDENT":
-                body.append(self.statement())
-            self.eat("DEDENT")
-            self.skip_newlines()
+        # parse body 
+        body = []
+        while self.cur().type != "DEDENT":
+            if self.cur().type == "NEWLINE":
+                self.eat("NEWLINE")
+                continue 
+            stmt = self.statement()
+            if stmt is not None:
+                body.append(stmt)
+        self.eat("DEDENT")
+        self.skip_newlines()
             
-            return FunctionDef(name, params, body)
+        return FunctionDef(name, params, body)
                 
     def parse_say(self):
         self.eat("SAY")
-        print(f"DEBUG SAY: cur token = {self.cur()}")
         if self.cur().type == "STRING":
             # String literal 
             text = self.cur().value 
@@ -491,7 +519,6 @@ class Parser:
         else:
             # Expression (variable, attribute, dll)
             expr = self.parse_expression()
-            print(f"DEBUG SAY: expr = {expr}")
             self.skip_newlines()
             return Say(expr)
 
