@@ -1,3 +1,5 @@
+// functions.axm - Function test
+
 FUN add(a, b)
   VAR result = a + b
   RETURN result
@@ -5,4 +7,37 @@ FUN add(a, b)
 VAR x = 5
 VAR y = 3
 VAR total = add(x, y)
-SAYF "{x} + {y} = {total}" // the output is expected 8
+SAYF "{x} + {y} = {total}"  // expected: 8
+
+// Test default param
+FUN add_default(a, b = 0)
+  RETURN a + b
+
+SAYF "add_default(5): {add_default(5)}"      // expected: 5
+SAYF "add_default(5, 3): {add_default(5, 3)}" // expected: 8
+
+// Test no-param function
+FUN hello()
+  SAY "Hello from function!"
+  RETURN 42
+
+VAR r = hello()
+SAYF "returned: {r}"
+
+// Test RETURN without value
+FUN do_nothing()
+  RETURN
+
+do_nothing()
+SAY "do_nothing OK"
+
+// Test scope: VAR inside function is local
+VAR global_x = 100
+FUN test_scope()
+  VAR global_x = 5
+  SAYF "inside function: {global_x}"
+  RETURN global_x
+
+VAR result = test_scope()
+SAYF "returned: {result}"
+SAYF "global_x after: {global_x}"  // expected: 100

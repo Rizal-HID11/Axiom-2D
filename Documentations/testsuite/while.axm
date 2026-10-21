@@ -1,25 +1,45 @@
+// while.axm - WHILE loop test
+
 VAR counter = 0
 
 WHILE counter < 5 DO
-  SLEEP 1 S 
+  SLEEP 100 MS
   SAYF "Counter: {counter}"
   counter = counter + 1
   IF counter == 3
     SAY "Halfway there!"
-	
-// Others version:
+
+// Test WHILE with BREAK
+VAR j = 0
+WHILE TRUE DO
+  IF j >= 2
+    BREAK
+  SAYF "break loop: {j}"
+  j = j + 1
+
+// Test WHILE with false condition (skip)
+WHILE FALSE DO
+  SAY "should not reach here"
+SAY "while false skipped"
+
+// Test scope: VAR inside WHILE is local
+VAR x = 1
+VAR i = 0
+WHILE i < 2 DO
+  VAR x = 99
+  SAYF "inside while: {x}"
+  i = i + 1
+SAYF "outside while: {x}"  // expected: 1
+
+// Others version (commented):
 // VAR i = 0
 // VAR limit = 10
-
 // WHILE TRUE DO
-//  SLEEP 1 S 
-//  i = i + 1
-
-//  SAYF "Counter: {i}"
-  
-//  IF i == MID(limit) // Math operations
-//    SAY "Halfway there!"
-
-//  IF i == limit
-//    SAY "Done!"
-//    BREAK
+//   SLEEP 100 MS
+//   i = i + 1
+//   SAYF "Counter: {i}"
+//   IF i == MID(limit)
+//     SAY "Halfway there!"
+//   IF i == limit
+//     SAY "Done!"
+//     BREAK

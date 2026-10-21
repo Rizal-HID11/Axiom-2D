@@ -1,3 +1,5 @@
+// basic.axm - Basic AXM syntax test
+
 VAR name = "Player"
 VAR health = 100
 
@@ -12,3 +14,26 @@ ELSE
 
 FOR i IN 3
   SAYF "Loop iteration: {i}"
+
+// Test scope: VAR inside IF is local
+VAR x = 1
+IF TRUE
+  VAR x = 99
+  SAYF "inside if: {x}"
+SAYF "outside if: {x}"  // expected: 1
+
+// Test WHILE
+VAR counter = 0
+WHILE counter < 3 DO
+  SAYF "while: {counter}"
+  counter = counter + 1
+
+// Test BREAK
+VAR j = 0
+WHILE TRUE DO
+  IF j >= 2
+    BREAK
+  SAYF "break loop: {j}"
+  j = j + 1
+
+SAY "done"

@@ -1,6 +1,9 @@
+// entities.axm - Entity actions test
+
 SAY "Entity Information:"
 SAYF "Player position: ({@player.x}, {@player.y})"
 SAYF "Player health: {@player.health}"
+SAYF "Player IsAlive: {@player.IsAlive}"
 
 @player MOVE 5 "RIGHT"
 @enemy DAMAGE 25
@@ -8,3 +11,22 @@ SAYF "Player health: {@player.health}"
 SAY "After actions:"
 SAYF "New player position: ({@player.x}, {@player.y})"
 SAYF "Enemy health: {@enemy.health}"
+
+// Test HEAL (return health)
+@enemy HEAL 10
+SAYF "Enemy health after heal: {@enemy.health}"
+
+// Test direction without quote
+@player MOVE 1 NORTH
+@player MOVE 1 ARROW_UP
+@player MOVE 1 UP_Z
+SAY "Direction without quote OK"
+
+// Test SLEEP (non-blocking)
+SAY "before sleep"
+SLEEP 100 MS
+SAY "after sleep"
+
+// Test DAMAGE until dead
+@enemy DAMAGE 100
+SAYF "Enemy IsDead: {@enemy.IsDead}"

@@ -1,3 +1,5 @@
+// lists.axm - List operations test
+
 VAR items = ["sword", "potion", "key"]
 SAYF "You have {LEN(items)} items"
 
@@ -9,3 +11,31 @@ SAYF "First item: {first}"
 
 IF CONTAINS(items, "potion")
   SAY "You have a potion!"
+
+// Test index assignment
+items[0] = "axe"
+SAYF "First item after assign: {items[0]}"
+
+// Test POP
+VAR last = POP(items)
+SAYF "Popped: {last}"
+
+// Test INSERT
+INSERT(items, 0, "bow")
+SAYF "After insert: {items[0]}"
+
+// Test REMOVE
+REMOVE(items, "potion")
+SAYF "After remove, contains potion: {CONTAINS(items, "potion")}"
+
+// Test INDEX_OF
+VAR idx = INDEX_OF(items, "key")
+SAYF "Index of key: {idx}"
+
+// Test nested list
+VAR nested = [[1, 2], [3, 4]]
+SAYF "nested[0][1]: {nested[0][1]}"
+
+// Test SPLIT
+VAR parts = SPLIT("a,b,c", ",")
+SAYF "parts: {parts}"

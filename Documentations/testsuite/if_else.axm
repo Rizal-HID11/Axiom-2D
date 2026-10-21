@@ -1,3 +1,5 @@
+// if_else.axm - IF/ELIF/ELSE test
+
 VAR score = 75
 SAYF "Score: {score}"
 
@@ -10,3 +12,34 @@ ELIF score >= 70
 ELSE
   SAY "Grade: D"
   SAY "Need improvement"
+
+// Test nested IF
+VAR x = 10
+IF x > 5
+  SAY "x > 5"
+  IF x > 8
+    SAY "x > 8"
+  ELSE
+    SAY "x <= 8"
+ELSE
+  SAY "x <= 5"
+
+// Test scope: VAR inside IF is local
+VAR y = 1
+IF TRUE
+  VAR y = 99
+  SAYF "inside if: {y}"
+SAYF "outside if: {y}"  // expected: 1
+
+// Test IF with function call
+FUN check(n)
+  IF n > 0
+    RETURN "positive"
+  ELIF n < 0
+    RETURN "negative"
+  ELSE
+    RETURN "zero"
+
+SAYF "check(5): {check(5)}"
+SAYF "check(-1): {check(-1)}"
+SAYF "check(0): {check(0)}"
